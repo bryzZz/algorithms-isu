@@ -1,0 +1,51 @@
+{
+  "out": [
+    {
+      "folder1": []
+    },
+    {
+      "folder2": [
+        "a.txt",
+        "b.txt",
+        {"subfolder1": ["a.txt"]},
+        {"subfolder2": ["a.txt"]},
+        {"subfolder3": ["a.txt"]}
+      ]
+    },
+    {
+      "folder3": [
+        {
+          "subfolder1": [
+            {
+              "subsubfolder1": [
+                {"subsubsubfolder1": [
+                  "a.txt",
+                  "b.txt",
+                  "c.txt",
+                  "e.txt"
+                ]}
+              ],
+              "subsubfolder2": [
+                "a.txt",
+                "b.txt",
+                "c.txt"
+              ]
+            }
+          ]
+        },
+        "a.txt",
+        "b.txt"
+      ]
+    },
+    {
+      "folder4": [
+        "a.txt",
+        "b.txt",
+        "c.txt"
+      ]
+    },
+    "a.txt",
+    "b.txt",
+    "c.txt"
+  ]
+}

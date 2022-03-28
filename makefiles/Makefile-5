@@ -1,0 +1,15 @@
+CC=g++
+CFLAGS=-c -Wall
+SOURCES=main.cpp (math.h math.cpp) (utils.h utils.cpp)
+
+ifeq ($(OS), Winsows_NT)
+	RM=del
+	EXECUTABLE=main.exe
+else
+	RM=rm -rf
+	EXECUTABLE=main
+endif
+
+all: $(SOURCES) $(EXECUTABLE)
+
+$(EXECUTABLE): 

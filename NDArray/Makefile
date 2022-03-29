@@ -13,7 +13,7 @@ all:
 	$(CC) main.cpp -o $(OUTNAME)
 
 clean:
-	$(RM) *.out *.o *.h.gch *.txt $(OUTNAME)
+	$(RM) *.out *.o *.h.gch *.txt
 
 run: all
 	./$(OUTNAME)

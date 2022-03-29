@@ -3,18 +3,6 @@
 
 using namespace std;
 
-struct NDArrayIndexes{
-    int start;
-    int end;
-    int step;
-
-    NDArrayIndexes(int start, int end, int step){
-        this->start = start;
-        this->end = end;
-        this->step = step;
-    }
-};
-
 template<class T> class NDArray{
     T *_array;
     int size;
@@ -51,7 +39,7 @@ template<class T> class NDArray{
                     arr[i] = this->_array[i] / otherFlatten[i];
                 }
             }
-            return NDArray<int>(this->shape, this->dimension, this->size, arr);
+            return NDArray<T>(this->shape, this->dimension, this->size, arr);
         }else {
             throw runtime_error("Arrays shapes are not equal");
         }
@@ -78,33 +66,6 @@ public:
         this->_array = _array;
     }
 
-    NDArray<T> flatten(){
-        int _shape[1] = {this->size};
-        return NDArray<T>(_shape, 1, this->size, this->_array);
-    }
-    
-    NDArray<T> matMul(NDArray<T> other){
-        if(
-            this->dimension == 2
-            && other.getDimension() == 2
-            && this->shape[0] == other.getShape()[1]
-            && this->shape[1] == other.getShape()[0]
-        ){
-            int minSide = (this->shape[0] > this->shape[1]) ? this->shape[1] : this->shape[0];
-            int newShape[2] = {minSide, minSide};
-            
-            for(int i = 0; i < this->size; i++){
-
-            }
-        }
-    }
-
-    NDArray<T> slice(NDArrayIndexes indexes){
-        // if(this->dimension == 1){
-            cout << indexes.start << indexes.step << indexes.end;
-        // }
-    }
-
     int getDimension(){
         return this->dimension;
     }
@@ -112,13 +73,81 @@ public:
         return this->shape;
     }
 
-    T& operator[](int index){
+
+    NDArray<T> flatten(){
+        int _shape[1] = {this->size};
+        return NDArray<T>(_shape, 1, this->size, this->_array);
+    }
+    
+    NDArray<T> transposition(){
+        int *newShape = new int[2]{this->shape[1], this->shape[0]};
+        NDArray<T> current = NDArray<T>(this->shape, this->dimension, this->size, this->_array);
+        T *newArr = new T[this->size];
+        for(int i = 0; i < this->shape[1]; i++){
+            for(int j = 0; j < this->shape[0]; j++){
+                // result(i, j) = current(j, i);
+                int index = i * newShape[1] + j;
+                newArr[index] = current(j, i);
+            }
+        }
+
+        return NDArray<T>(newShape, this->dimension, this->size, newArr);
+    }
+    NDArray<T> matMul(NDArray<T> other){
+        if(
+            this->dimension == 2
+            && other.getDimension() == 2
+            && this->shape[1] == other.getShape()[0]
+        ){
+            NDArray<T> otherT = other.transposition();
+            int *newShape = new int[2]{this->shape[0], other.getShape()[1]};
+            int newSize = newShape[0];
+            for(int i = 1; i < this->dimension; i++){
+                newSize *= newShape[i];
+            }
+            T *newArr = new T[newSize];
+            NDArray<T> current = NDArray<T>(this->shape, this->dimension, this->size, this->_array);
+
+            for(int i = 0; i < this->shape[0]; i++){
+                for(int j = 0; j < this->shape[1]; j++){
+                    NDArray<T> item = current(i) * otherT(j);
+                    T sum = 0;
+                    for(int k = 0; k < this->shape[1]; k++){
+                        sum += item[k];
+                    }
+                    int index = i * newShape[1] + j;
+                    newArr[index] = sum;
+                }
+            }
+
+            return NDArray<T>(newShape, this->dimension, newSize, newArr);
+        }
+
+        throw runtime_error("Not supported");
+    }
+
+    T& operator[](unsigned index){
         if(this->dimension == 1){
             return this->_array[index];
-        }else if(this->dimension == 2) {
-            // return NDArray<T>(this->size, this->_array);
         }
-        return this->_array[index];
+
+        throw runtime_error("Not supported");
+    }
+    NDArray<T> operator()(unsigned row){
+        if(this->dimension == 2){
+            int rowShape[1] = {this->shape[1]};
+            // const T *rowArray = this->_array + index;
+            return NDArray<T>(rowShape, 1, this->shape[1], this->_array + row * this->shape[1]);
+        }
+
+        throw runtime_error("Not supported");
+    }
+    T& operator()(unsigned row, unsigned col){
+        if(this->dimension == 2){
+            return this->_array[row * this->shape[1] + col];
+        }
+
+        throw runtime_error("Not supported");
     }
 
     NDArray<T> operator+(NDArray<T> other) {
@@ -133,7 +162,7 @@ public:
     NDArray<T> operator/(NDArray<T> other) {
         return this->element_wise_operator(other, "div");
     }
-
+    
     friend ostream& operator<<(ostream &out, const NDArray& arr){
         if(arr.dimension == 1){
             out << "[";
@@ -183,10 +212,11 @@ public:
             size *= shape[i];
         }
         // initialize random array
-        srand((unsigned)time(0)); 
+        srand((unsigned) time(0));
+        cout << "start " << start << " stop " << stop << endl;
         int *arr = new int[size];
         for(int i = 0; i < size; i++){
-            arr[i] = (rand() % stop)+start;
+            arr[i] = start + (rand() % stop);
         }
 
         return NDArray<int>(shape, dimension, size, arr);
@@ -194,27 +224,33 @@ public:
 };
 
 int main(){
-    int dimension = 2;
-    int shape[dimension] = {3, 3};
-    int shape2[dimension] = {3, 3};
-    // NDArray<int> ones = NDArray<int>::ones(shape, dimension);
-    NDArray<int> zeros = NDArray<int>::zeros(shape2, dimension);
-    NDArray<int> random = NDArray<int>::random(shape, dimension);
+    int shape[1] = {6};
+    int shape2[2] = {3, 3};
+    int shape3[2] = {3, 3};
+    int *arr = new int[6]{0, 1, 2, 3, 4, 5};
+    NDArray<int> empty = NDArray<int>(shape, 1);
+    NDArray<int> filled = NDArray<int>(shape, 1, 6, arr);
+    NDArray<int> ones = NDArray<int>::ones(shape2, 2);
+    NDArray<int> random = NDArray<int>::random(shape3, 2, 0, 10);
+    NDArray<int> random2 = NDArray<int>::random(shape3, 2, 10, 20);
 
-    random.slice(NDArrayIndexes(1, 2, 3));
+    // cout << "Empty array: " << empty << endl;
+    // cout << "Filled: " << filled << endl;
+    // cout << "Ones: " << ones << endl;
+    // cout << "Random: " << random << endl;
+    // cout << "Random2: " << random2 << endl;
 
-    // ones.matMul(zeros);
+    // cout << "Empty + Filled = " << empty + filled << endl;
+    // cout << "Ones * Random = " << ones * random << endl;
+    // cout << "Random1 - Random2 = " << random - random2 << endl;
 
-    // cout << "ones: " << ones << endl;
+    // cout << "Random1 transposition: " << random.transposition() << endl;
+    // cout << "Random1 @ Random2 = " << random.matMul(random2) << endl;
 
-    // NDArray<int> flat = zeros.flatten();
-    // flat[3] = 666;
-
-    // cout << "zeros: " << zeros << endl;
-    // cout << "random: " << random << endl;
-
-    // NDArray<int> sum = random + zeros;
-    // cout << "sum: " << sum << endl;
+    // cout << "filled third element: " << filled[2] << endl;
+    // cout << "Random1 first row: " << random(0) << endl;
+    // cout << "Random1 second row second element: " << random(1, 1) << endl;
+    // cout << "Random1 second row second element(different method): " << random(1)[1] << endl;
 
     return 0;
 }

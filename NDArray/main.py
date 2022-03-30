@@ -147,8 +147,8 @@ class NDArray():
 if __name__ == "__main__":
     arr = NDArray((3, 3), fill=[1, 2, 3, 4, 5, 6, 7, 8, 9])
     brr = NDArray((3, 3), fill=[1, 2, 3, 4, 5, 6, 7, 8, 9])
-    # print(arr[:, 0])
-    print(arr @ brr)
+    print(arr[:, 1])
+    # print(arr @ brr)
     # print(arr[0])
     # print(brr)
     # print(brr.T())

@@ -1,5 +1,6 @@
 #include <iostream>
 #include <ctime>
+#include <math.h>
 
 using namespace std;
 
@@ -8,6 +9,7 @@ template<class T> class NDArray{
     int size;
     int *shape;
     int dimension;
+    int step = 1;
 
     bool isShapeEqualToThis(NDArray<T> other){
         if(this->dimension != other.getDimension()){
@@ -45,9 +47,7 @@ template<class T> class NDArray{
         }
     }
 public:
-    NDArray(int shape[], int dimension, T fill = 0){
-        this->shape = shape;
-        this->dimension = dimension;
+    NDArray(int shape[], int dimension, T fill = 0) : shape(shape), dimension(dimension){
         // calculate inner array size
         this->size = shape[0];
         for(int i = 1; i < dimension; i++){
@@ -57,13 +57,14 @@ public:
         for(int i = 0; i < this->size; i++){
             this->_array[i] = fill;
         }
+        this->step = 1;
     }
-    NDArray(int shape[], int dimension, int size, T *_array){
+    NDArray(int shape[], int dimension, int size, T *_array, int step = 1){
         this->shape = shape;
         this->dimension = dimension;
         this->size = size;
-        this->_array = (T *)malloc(this->size * sizeof(T));
         this->_array = _array;
+        this->step = step;
     }
 
     int getDimension(){
@@ -72,16 +73,10 @@ public:
     int* getShape(){
         return this->shape;
     }
-
-
-    NDArray<T> flatten(){
-        int _shape[1] = {this->size};
-        return NDArray<T>(_shape, 1, this->size, this->_array);
-    }
     
     NDArray<T> transposition(){
         int *newShape = new int[2]{this->shape[1], this->shape[0]};
-        NDArray<T> current = NDArray<T>(this->shape, this->dimension, this->size, this->_array);
+        NDArray<T> current = NDArray<T>(this->shape, this->dimension, this->size, this->_array, this->step);
         T *newArr = new T[this->size];
         for(int i = 0; i < this->shape[1]; i++){
             for(int j = 0; j < this->shape[0]; j++){
@@ -106,7 +101,7 @@ public:
                 newSize *= newShape[i];
             }
             T *newArr = new T[newSize];
-            NDArray<T> current = NDArray<T>(this->shape, this->dimension, this->size, this->_array);
+            NDArray<T> current = NDArray<T>(this->shape, this->dimension, this->size, this->_array, this->step);
 
             for(int i = 0; i < this->shape[0]; i++){
                 for(int j = 0; j < this->shape[1]; j++){
@@ -126,9 +121,44 @@ public:
         throw runtime_error("Not supported");
     }
 
+    NDArray<T> flatten(){
+        int _shape[1] = {this->size};
+        return NDArray<T>(_shape, 1, this->size, this->_array);
+    }
+
+    NDArray<T> slice(int start = 0, int stop = -1, int step = 1){
+        // cout << "start " << start << " stop " << stop << " step " << step << endl;
+        if(this->dimension == 1){
+            // calculate stop
+            stop = (stop == -1) ? this->size : stop;
+            // define new size
+            int newSize = ceil(((float)stop - (float)start) / (float)step);
+
+            return NDArray<T>(this->shape, this->dimension, newSize, this->_array+start, step);
+        }else if(this->dimension == 2){
+            stop = (stop == -1) ? this->shape[0] : stop;
+            int newRowsCount = ceil(((float)stop - (float)start) / (float)step);
+            int *newShape = new int[2]{newRowsCount, this->shape[1]};
+            int newSize = newRowsCount * this->shape[1];
+
+            return NDArray<T>(newShape, this->dimension, newSize, this->_array+start*this->shape[1], step);
+        }
+
+        throw runtime_error("Not supported");
+    }
+
+    NDArray<T> min(int axis = -1){
+        if(this->dimension == 1){
+            // if(axis == -1 || axis == 0){
+            //     int min = this->_array[0];
+            //     for(int i = 1; i < )
+            // }
+        }
+    }
+
     T& operator[](unsigned index){
         if(this->dimension == 1){
-            return this->_array[index];
+            return this->_array[index * this->step];
         }
 
         throw runtime_error("Not supported");
@@ -136,15 +166,14 @@ public:
     NDArray<T> operator()(unsigned row){
         if(this->dimension == 2){
             int rowShape[1] = {this->shape[1]};
-            // const T *rowArray = this->_array + index;
-            return NDArray<T>(rowShape, 1, this->shape[1], this->_array + row * this->shape[1]);
+            return NDArray<T>(rowShape, 1, this->shape[1], this->_array + row * this->shape[1] * this->step);
         }
 
         throw runtime_error("Not supported");
     }
     T& operator()(unsigned row, unsigned col){
         if(this->dimension == 2){
-            return this->_array[row * this->shape[1] + col];
+            return this->_array[row * this->shape[1] * this->step + col];
         }
 
         throw runtime_error("Not supported");
@@ -168,9 +197,9 @@ public:
             out << "[";
             for (int i = 0; i < arr.size; i++){
                 if(i == arr.size - 1){
-                    out << arr._array[i];
+                    out << arr._array[i * arr.step];
                 }else{
-                    out << arr._array[i] << ", ";
+                    out << arr._array[i * arr.step] << ", ";
                 }
             }
             out << "]";
@@ -179,11 +208,14 @@ public:
             // rows iteration
             for(int i = 0; i < arr.shape[0]; i++){
                 out << "    [";
-                // columns iterations
-                for(int j = i*arr.shape[1]; j < i*arr.shape[1]+arr.shape[1]; j++){
+
+                // calculate position with step
+                int startRowIndex = (i * arr.shape[1]) * arr.step;
+                int endRowIndex = startRowIndex + arr.shape[1];
+                for(int j = startRowIndex; j < endRowIndex; j++){
                     out << arr._array[j];
                     // just pretty end of line
-                    if(j != i*arr.shape[1]+arr.shape[1]-1){
+                    if(j != endRowIndex - 1){
                         out << ", ";
                     }
                 }
@@ -226,7 +258,7 @@ public:
 int main(){
     int shape[1] = {6};
     int shape2[2] = {3, 3};
-    int shape3[2] = {3, 3};
+    int shape3[2] = {7, 3};
     int *arr = new int[6]{0, 1, 2, 3, 4, 5};
     NDArray<int> empty = NDArray<int>(shape, 1);
     NDArray<int> filled = NDArray<int>(shape, 1, 6, arr);
@@ -251,6 +283,21 @@ int main(){
     // cout << "Random1 first row: " << random(0) << endl;
     // cout << "Random1 second row second element: " << random(1, 1) << endl;
     // cout << "Random1 second row second element(different method): " << random(1)[1] << endl;
+
+    // Slices
+    // NDArray<int> filS = filled.slice(0, -1, 2);
+    // cout << "Filled slice: " << filS << endl;
+    // cout << "Change Filled slice[2] to 222" << endl;
+    // filS[2] = 222;
+    // cout << "Filled slice: " << filS << endl;
+    // cout << "Filled: " << filled << endl;
+
+    // NDArray<int> randomS = random.slice(0, -1, 2);
+    // NDArray<int> random2S = random2.slice(0, 3);
+    // cout << "randomS: " << randomS << endl;
+    // cout << "random2S: " << random2S << endl;
+    // cout << randomS.matMul(random2S) << endl;
+    // cout << "randomST: " << randomS.transposition() << endl;
 
     return 0;
 }

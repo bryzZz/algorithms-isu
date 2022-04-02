@@ -46,6 +46,99 @@ template<class T> class NDArray{
             throw runtime_error("Arrays shapes are not equal");
         }
     }
+
+    NDArray<T> reduction(int axis, string operation){
+        if(this->dimension == 1){
+            if(axis == 0){
+                int *newShape = new int[1]{1};
+                T *newArr = new T[1]{this->_array[0]};
+                for (int i = 1; i < this->size; i++){
+                    T currentElement = this->_array[i * this->step];
+                    if(operation == "min"){
+                        if(currentElement < newArr[0]){
+                            newArr[0] = currentElement;
+                        }
+                    }else if(operation == "max"){
+                        if(currentElement > newArr[0]){
+                            newArr[0] = currentElement;
+                        }
+                    }else if(operation == "average"){
+                        newArr[0] += currentElement;
+                    }
+                }
+                if(operation == "average"){
+                    newArr[0] = newArr[0] / this->size;
+                }
+                return NDArray<T>(newShape, this->dimension, 1, newArr);
+            }else {
+                throw runtime_error("This array has only one axis");
+            }
+        }else if(this->dimension == 2){
+            if(axis == 0){
+                int *newShape = new int[1]{this->shape[1]};
+                T *newArr = new T[this->shape[1]];
+                NDArray<T> currentT = this->transposition();
+
+                for(int i = 0; i < currentT.getShape()[0]; i++){
+                    NDArray<T> item = currentT(i);
+                    T currentElement = item[0];
+                    for(int j = 1; j < currentT.getShape()[1]; j++){
+                        if(operation == "min"){
+                            if(currentElement > item[j]){
+                                currentElement = item[j];
+                            }
+                        }else if(operation == "max"){
+                            if(currentElement < item[j]){
+                                currentElement = item[j];
+                            }
+                        }else if(operation == "average"){
+                            currentElement += item[j];
+                        }
+                    }
+                    if(operation == "average"){
+                        newArr[i] = currentElement / currentT.getShape()[1];
+                    }else {
+                        newArr[i] = currentElement;
+                    }
+                }
+
+                return NDArray<T>(newShape, 1, this->shape[1], newArr);
+            }else if(axis == 1){
+                int *newShape = new int[1]{this->shape[0]};
+                T *newArr = new T[this->shape[0]];
+                NDArray<T> current = NDArray<T>(this->shape, this->dimension, this->size, this->_array, this->step);
+
+                for(int i = 0; i < current.getShape()[0]; i++){
+                    NDArray<T> item = current(i);
+                    T currentElement = item[0];
+                    for(int j = 1; j < current.getShape()[1]; j++){
+                        if(operation == "min"){
+                            if(currentElement > item[j]){
+                                currentElement = item[j];
+                            }
+                        }else if(operation == "max"){
+                            if(currentElement < item[j]){
+                                currentElement = item[j];
+                            }
+                        }else if(operation == "average"){
+                            currentElement += item[j];
+                        }
+                    }
+                    if(operation == "average"){
+                        newArr[i] = currentElement / current.getShape()[1];
+                    }else {
+                        newArr[i] = currentElement;
+                    }
+                }
+
+                return NDArray<T>(newShape, 1, this->shape[0], newArr);
+            }else {
+                throw runtime_error("This array has only two axis");
+            }
+        }
+
+        throw runtime_error("This dimension is not supported.");
+    }
 public:
     NDArray(int shape[], int dimension, T fill = 0) : shape(shape), dimension(dimension){
         // calculate inner array size
@@ -147,15 +240,16 @@ public:
         throw runtime_error("Not supported");
     }
 
-    NDArray<T> min(int axis = -1){
-        if(this->dimension == 1){
-            // if(axis == -1 || axis == 0){
-            //     int min = this->_array[0];
-            //     for(int i = 1; i < )
-            // }
-        }
+    NDArray<T> min(int axis){
+        return this->reduction(axis, "min");
     }
-
+    NDArray<T> max(int axis){
+        return this->reduction(axis, "max");
+    }
+    NDArray<T> average(int axis){
+        return this->reduction(axis, "average");
+    }
+    
     T& operator[](unsigned index){
         if(this->dimension == 1){
             return this->_array[index * this->step];
@@ -237,7 +331,7 @@ public:
     static NDArray<T> zeros(int shape[], int dimension){
         return NDArray<T>(shape, dimension, 0);
     }
-    static NDArray<int> random(int shape[], int dimension, int start = 0, int stop = 1000){
+    static NDArray<float> random(int shape[], int dimension, int start = 0, int stop = 1000){
         // calculate array size
         int size = shape[0];
         for(int i = 1; i < dimension; i++){
@@ -246,58 +340,67 @@ public:
         // initialize random array
         srand((unsigned) time(0));
         cout << "start " << start << " stop " << stop << endl;
-        int *arr = new int[size];
+        float *arr = new float[size];
         for(int i = 0; i < size; i++){
             arr[i] = start + (rand() % stop);
         }
 
-        return NDArray<int>(shape, dimension, size, arr);
+        return NDArray<float>(shape, dimension, size, arr);
     }
 };
 
 int main(){
     int shape[1] = {6};
-    int shape2[2] = {3, 3};
-    int shape3[2] = {7, 3};
-    int *arr = new int[6]{0, 1, 2, 3, 4, 5};
-    NDArray<int> empty = NDArray<int>(shape, 1);
-    NDArray<int> filled = NDArray<int>(shape, 1, 6, arr);
-    NDArray<int> ones = NDArray<int>::ones(shape2, 2);
-    NDArray<int> random = NDArray<int>::random(shape3, 2, 0, 10);
-    NDArray<int> random2 = NDArray<int>::random(shape3, 2, 10, 20);
+    int shape2[2] = {3, 5};
+    int shape3[2] = {5, 3};
+    float *arr = new float[6]{0, 1, 2, 3, 4, 5};
+    NDArray<float> empty = NDArray<float>(shape, 1);
+    NDArray<float> filled = NDArray<float>(shape, 1, 6, arr);
+    NDArray<float> ones = NDArray<float>::ones(shape2, 2);
+    NDArray<float> random = NDArray<float>::random(shape2, 2, 0, 10);
+    NDArray<float> random2 = NDArray<float>::random(shape3, 2, 10, 20);
 
-    // cout << "Empty array: " << empty << endl;
-    // cout << "Filled: " << filled << endl;
-    // cout << "Ones: " << ones << endl;
-    // cout << "Random: " << random << endl;
-    // cout << "Random2: " << random2 << endl;
+    cout << "Empty array: " << empty << endl;
+    cout << "Filled: " << filled << endl;
+    cout << "Ones: " << ones << endl;
+    cout << "Random: " << random << endl;
+    cout << "Random2: " << random2 << endl;
 
-    // cout << "Empty + Filled = " << empty + filled << endl;
-    // cout << "Ones * Random = " << ones * random << endl;
-    // cout << "Random1 - Random2 = " << random - random2 << endl;
+    cout << "Empty + Filled = " << empty + filled << endl;
+    cout << "Ones * Random = " << ones * random << endl;
+    cout << "Random - Ones = " << random - ones << endl;
 
-    // cout << "Random1 transposition: " << random.transposition() << endl;
-    // cout << "Random1 @ Random2 = " << random.matMul(random2) << endl;
+    cout << "Random1 transposition: " << random.transposition() << endl;
+    cout << "Random1 @ Random2 = " << random.matMul(random2) << endl;
 
-    // cout << "filled third element: " << filled[2] << endl;
-    // cout << "Random1 first row: " << random(0) << endl;
-    // cout << "Random1 second row second element: " << random(1, 1) << endl;
-    // cout << "Random1 second row second element(different method): " << random(1)[1] << endl;
+    cout << "filled third element: " << filled[2] << endl;
+    cout << "Random1 first row: " << random(0) << endl;
+    cout << "Random1 second row second element: " << random(1, 1) << endl;
+    cout << "Random1 second row second element(different method): " << random(1)[1] << endl;
 
     // Slices
-    // NDArray<int> filS = filled.slice(0, -1, 2);
-    // cout << "Filled slice: " << filS << endl;
-    // cout << "Change Filled slice[2] to 222" << endl;
-    // filS[2] = 222;
-    // cout << "Filled slice: " << filS << endl;
-    // cout << "Filled: " << filled << endl;
+    NDArray<float> filS = filled.slice(2, -1, 2);
+    cout << "Filled slice: " << filS << endl;
+    cout << "Change Filled slice[0] to 222" << endl;
+    filS[1] = 222;
+    cout << "Filled slice: " << filS << endl;
+    cout << "Filled: " << filled << endl;
 
-    // NDArray<int> randomS = random.slice(0, -1, 2);
-    // NDArray<int> random2S = random2.slice(0, 3);
-    // cout << "randomS: " << randomS << endl;
-    // cout << "random2S: " << random2S << endl;
-    // cout << randomS.matMul(random2S) << endl;
-    // cout << "randomST: " << randomS.transposition() << endl;
+    NDArray<float> randomS = random.slice(0, -1, 2);
+    NDArray<float> random2S = random2.slice(0, 5);
+    cout << "randomS: " << randomS << endl;
+    cout << "random2S: " << random2S << endl;
+    cout << "randomS @ random2S: " << randomS.matMul(random2S) << endl;
+    cout << "randomST: " << randomS.transposition() << endl;
+    cout << "Change randomS(1, 2) to 666" << endl;
+    randomS(1, 2) = 222;
+    cout << "Random slice: " << randomS << endl;
+    cout << "Random: " << random << endl;
+    
+    // Reduction
+    cout << "Reduction Filled max: " << filled.max(0) << endl;
+    cout << "Reduction Random min by 0 axis: " << random.min(0) << endl;
+    cout << "Reduction Random average by 1 axis: " << random.average(1) << endl;
 
     return 0;
 }
